@@ -5,6 +5,8 @@ import { ConfigService } from '@nestjs/config';
 import { catchError, firstValueFrom } from 'rxjs';
 import { PlexGuideContainer, PlexLineups } from './types';
 
+import rateLimit, { RateLimitedAxiosInstance } from 'axios-rate-limit';
+
 @Injectable()
 export class PlexService {
   private readonly logger = new Logger(PlexService.name);
@@ -12,6 +14,13 @@ export class PlexService {
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
   ) {
+    this.rateLimitedHttp = rateLimit(this.httpService.axiosRef.create(), {
+      limits: [
+        { maxRequests: 5, duration: '2s' },
+        { maxRequests: 2, duration: '500ms' },
+        { maxRequests: 100, duration: '60s' },
+      ],
+    });
     this.PROVIDER = this.configService.get<string>(
       'PROVIDER',
       'tv.plex.providers.epg.cloud',
@@ -23,6 +32,7 @@ export class PlexService {
   PROVIDER = '';
   COUNTRY = '';
   PLEX_URL = '';
+  rateLimitedHttp: RateLimitedAxiosInstance;
 
   async getOtaLineupUuid(postalCode: string) {
     const url = URL.parse(
@@ -130,18 +140,9 @@ export class PlexService {
    * but still requires the X-Plex-Token header.
    */
   async getGrid(channelGridKey: string, dateStr: string) {
-    const { data } = await firstValueFrom(
-      this.httpService
-        .get<PlexGuideContainer>(
-          `https://epg.provider.plex.tv/grid?channelGridKey=${encodeURIComponent(channelGridKey)}&date=${encodeURIComponent(dateStr)}`,
-        )
-        .pipe(
-          catchError((error: AxiosError) => {
-            this.logger.error(error.response?.data);
-            throw error;
-          }),
-        ),
+    const response = await this.rateLimitedHttp.get<PlexGuideContainer>(
+      `https://epg.provider.plex.tv/grid?channelGridKey=${encodeURIComponent(channelGridKey)}&date=${encodeURIComponent(dateStr)}`,
     );
-    return data.MediaContainer.Metadata || [];
+    return response.data.MediaContainer.Metadata || [];
   }
 }
