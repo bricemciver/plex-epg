@@ -1,16 +1,18 @@
-import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-import { AxiosError } from 'axios';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { AxiosError } from 'axios';
 import { catchError, firstValueFrom } from 'rxjs';
 import { PlexGuideContainer, PlexLineups } from './types';
 
+import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import rateLimit, { RateLimitedAxiosInstance } from 'axios-rate-limit';
 
 @Injectable()
 export class PlexService {
   private readonly logger = new Logger(PlexService.name);
   constructor(
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
   ) {
@@ -140,9 +142,22 @@ export class PlexService {
    * but still requires the X-Plex-Token header.
    */
   async getGrid(channelGridKey: string, dateStr: string) {
-    const response = await this.rateLimitedHttp.get<PlexGuideContainer>(
-      `https://epg.provider.plex.tv/grid?channelGridKey=${encodeURIComponent(channelGridKey)}&date=${encodeURIComponent(dateStr)}`,
-    );
-    return response.data.MediaContainer.Metadata || [];
+    // Check the cache first to avoid unnecessary calls to Plex EPG
+    const cacheKey = `channelGridKey=${encodeURIComponent(channelGridKey)}&date=${encodeURIComponent(dateStr)}`;
+    let guideData = await this.cacheManager.get<PlexGuideContainer>(cacheKey);
+    if (!guideData) {
+      const response = await this.rateLimitedHttp.get<PlexGuideContainer>(
+        `https://epg.provider.plex.tv/grid?${cacheKey}`,
+      );
+      if (response.data.MediaContainer.Metadata) {
+        // 28,800,000 is 8 hours in milliseconds
+        guideData = await this.cacheManager.set<PlexGuideContainer>(
+          cacheKey,
+          response.data,
+          28800000,
+        );
+      }
+    }
+    return guideData?.MediaContainer.Metadata || [];
   }
 }
