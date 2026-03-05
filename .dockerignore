@@ -1,4 +1,10 @@
-node_modules
-package-lock.json
-dist
-test
+data/
+.dockerignore
+.env
+.env.sample
+Dockerfile
+docker-compose.yml
+README.md
+node_modules/
+*.log
+*.tmp
