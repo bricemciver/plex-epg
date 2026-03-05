@@ -23,6 +23,14 @@
 
 FROM ghcr.io/iptv-org/epg:master
 
+LABEL "org.opencontainers.image.authors"="Brice McIver"
+LABEL "org.opencontainers.image.url"="https://github.com/bricemciver/plex-epg/packages"
+LABEL "org.opencontainers.image.source"="https://github.com/bricemciver/plex-epg"
+LABEL "org.opencontainers.image.vendor"="Brice McIver"
+LABEL "org.opencontainers.image.licenses"="MIT"
+LABEL "org.opencontainers.image.title"="Plex EPG"
+LABEL "org.opencontainers.image.description"="Extends ghcr.io/iptv-org/epg with automatic **over-the-air (OTA) channel discovery** using the Plex Pass Live TV EPG API."
+
 # Copy our OTA extension files into a dedicated directory
 RUN mkdir -p /ota
 COPY generate-channels.js /ota/generate-channels.js
