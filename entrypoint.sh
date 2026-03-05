@@ -12,8 +12,13 @@ set -e
 CHANNELS_FILE="${CHANNELS_FILE:-/epg/public/channels.xml}"
 
 if [ -n "$ZIP_CODE" ]; then
-  echo "=== OTA channel generation enabled for zip: $ZIP_CODE ==="
+  if [ -z "$PLEX_URL" ] || [ -z "$PLEX_TOKEN" ]; then
+    echo "ERROR: PLEX_URL and PLEX_TOKEN environment variables are required"
+    exit 1
+  fi
 
+  echo "=== OTA channel generation enabled for zip: $ZIP_CODE ==="
+ 
   node /ota/generate-channels.js \
     --zip="$ZIP_CODE" \
     --output="$CHANNELS_FILE" \
