@@ -38,12 +38,10 @@ and then runs the upstream EPG grabber normally.
 ```yaml
 # docker-compose.yml
 services:
-  epg:
+  plex-epg:
     build: .
     ports:
       - "3000:3000"
-    volumes:
-      - ./data:/epg/public
     environment:
       ZIP_CODE: "90210"
       PLEX_URL: "http://192.168.1.10:32400"
@@ -61,16 +59,34 @@ docker compose up -d
 
 ```bash
 # Build
-docker build -t epg-ota .
+docker build -t plex-epg .
 
 # Run
 docker run -p 3000:3000 \
   -e ZIP_CODE=90210 \
   -e PLEX_URL=http://192.168.1.10:32400 \
   -e PLEX_TOKEN=your-plex-token-here \
-  -v "$(pwd)/data:/epg/public" \
-  epg-ota
+  plex-epg
 
+```
+
+### With Makefile
+
+```bash
+# Build
+make build
+
+# Run
+make run
+
+# Enter running container
+make exec
+
+# Stop container
+make stop
+
+# Remove image
+make clean
 ```
 
 ---
@@ -157,9 +173,6 @@ docker exec <container_name> node /ota/generate-channels.js \
 ```bash
 # Via docker exec
 docker exec <container_name> cat /epg/public/channels.xml
-
-# Or directly from the volume
-cat ./data/public/channels.xml
 ```
 
 ---
